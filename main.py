@@ -33,7 +33,6 @@ MENU = """
   0) Exit
 ====================================================="""
 
-
 def show_state(title, state):
     print(f"\n{title}")
     print(format_state(state))

@@ -1,19 +1,3 @@
-"""
-mix_columns.py
---------------
-Stage 5: MixColumns and InvMixColumns
-
-Each column of the State is multiplied (in GF(2^8)) by a fixed matrix.
-
-MixColumns matrix:            InvMixColumns matrix:
-    | 02 03 01 01 |               | 0e 0b 0d 09 |
-    | 01 02 03 01 |               | 09 0e 0b 0d |
-    | 01 01 02 03 |               | 0d 09 0e 0b |
-    | 03 01 01 02 |               | 0b 0d 09 0e |
-
-"Addition" inside the matrix product is XOR.
-"""
-
 from .gf256 import gmul
 from .state import copy_state
 
@@ -45,10 +29,8 @@ def _mix(state, matrix):
 
 
 def mix_columns(state):
-    """Multiply every column by MIX_MATRIX. Returns a new State."""
     return _mix(state, MIX_MATRIX)
 
 
 def inv_mix_columns(state):
-    """Multiply every column by INV_MIX_MATRIX. Returns a new State."""
     return _mix(state, INV_MIX_MATRIX)

@@ -19,6 +19,7 @@ from .shift_rows import inv_shift_rows, shift_rows
 from .state import hex_to_state, state_to_hex
 from .sub_bytes import inv_sub_bytes, sub_bytes
 from .text_hex import pad_pkcs7, split_blocks, text_to_hex, unpad_pkcs7
+from .typewriter import Typewriter
 from .utils import BLOCK_SIZE, bytes_to_spaced_hex, clean_hex, format_row
 
 PREVIOUS_FLAGS = {"p", "prev", "previous", "last"}
@@ -38,6 +39,13 @@ INVERSE_STAGES = [
 ]
 
 
+typer = Typewriter()
+
+
+def out(text="", end="\n"):
+    typer.write(f"{text}{end}")
+
+
 class Session:
     def __init__(self):
         self.last_hex = None
@@ -48,36 +56,36 @@ class Session:
 def say(session, lines):
     if not session.explain:
         return
-    print("\n  How it works:")
+    out("\n  How it works:")
     for line in lines:
-        print(f"    {line}")
+        out(f"    {line}")
 
 
 def header(title):
-    print(f"\n=== {title} ===")
+    out(f"\n=== {title} ===")
 
 
 def show_state(label, state):
-    print(f"\n  {label}")
+    out(f"\n  {label}")
     for row in state:
-        print(f"    {format_row(row)}")
-    print(f"  hex: {state_to_hex(state)}")
+        out(f"    {format_row(row)}")
+    out(f"  hex: {state_to_hex(state)}")
 
 
 def show_pair(left, right):
     width = 22
-    print(f"\n  {'Input State':<{width}}Output State")
+    out(f"\n  {'Input State':<{width}}Output State")
     for left_row, right_row in zip(left, right):
-        print(f"  {format_row(left_row):<{width}}{format_row(right_row)}")
-    print(f"  Input hex : {state_to_hex(left)}")
-    print(f"  Output hex: {state_to_hex(right)}")
+        out(f"  {format_row(left_row):<{width}}{format_row(right_row)}")
+    out(f"  Input hex : {state_to_hex(left)}")
+    out(f"  Output hex: {state_to_hex(right)}")
 
 
 def get_text(session, mode):
     if mode == "prev":
         if session.last_text is None:
             raise ValueError("There is no previous text yet. Run a text stage first.")
-        print(f"Using previous text: {session.last_text}")
+        out(f"Using previous text: {session.last_text}")
         return session.last_text
     hint = " (type /p for the previous text)" if session.last_text is not None else ""
     raw = input(f"Enter text{hint}: ")
@@ -90,7 +98,7 @@ def get_hex(session, mode):
     if mode == "prev":
         if session.last_hex is None:
             raise ValueError("There is no previous result yet. Run a stage first.")
-        print(f"Using previous result: {session.last_hex}")
+        out(f"Using previous result: {session.last_hex}")
         return session.last_hex
     hint = " (type p for the previous result)" if session.last_hex is not None else ""
     raw = input(f"Enter hex{hint}: ")
@@ -109,7 +117,7 @@ def to_blocks(session, raw, auto_pad):
             )
         say(session, explain_padding(len(data)))
         data = pad_pkcs7(data)
-        print(f"Padded input: {data.hex()}")
+        out(f"Padded input: {data.hex()}")
     return split_blocks(data)
 
 
@@ -122,8 +130,8 @@ def stage_text_to_hex(session, mode):
     header("Text -> Hex")
     say(session, explain_text_to_hex(text))
     result = text_to_hex(text)
-    print(f"\nHex: {result}")
-    print(f"Hex (spaced): {bytes_to_spaced_hex(bytes.fromhex(result))}")
+    out(f"\nHex: {result}")
+    out(f"Hex (spaced): {bytes_to_spaced_hex(bytes.fromhex(result))}")
     session.last_hex = result
     session.last_text = text
 
@@ -135,7 +143,7 @@ def stage_hex_to_state(session, mode):
         say(session, explain_hex_to_state(block))
         show_state("State", hex_to_state(block.hex()))
     session.last_hex = b"".join(blocks).hex()
-    print(f"\nResult: {session.last_hex}")
+    out(f"\nResult: {session.last_hex}")
 
 
 def state_stage(session, mode, title, func, explainer, auto_pad):
@@ -149,7 +157,7 @@ def state_stage(session, mode, title, func, explainer, auto_pad):
         show_pair(state, result)
         out_hex += state_to_hex(result)
     session.last_hex = out_hex
-    print(f"\nResult: {out_hex}")
+    out(f"\nResult: {out_hex}")
 
 
 def stage_state_to_hex(session, mode):
@@ -162,7 +170,7 @@ def stage_state_to_hex(session, mode):
         say(session, explain_state_to_hex(state))
         out_hex += state_to_hex(state)
     session.last_hex = out_hex
-    print(f"\nHex: {out_hex}")
+    out(f"\nHex: {out_hex}")
 
 
 def decode_plain(session, data, strict):
@@ -184,8 +192,8 @@ def decode_plain(session, data, strict):
     except UnicodeDecodeError:
         raise ValueError("The resulting bytes are not valid UTF-8 text.")
     say(session, explain_hex_to_text(plain))
-    print(f"\nPlain hex: {plain.hex()}")
-    print(f"Text: {text}")
+    out(f"\nPlain hex: {plain.hex()}")
+    out(f"Text: {text}")
     session.last_text = text
     session.last_hex = plain.hex()
     return text
@@ -201,12 +209,12 @@ def forward_chain(session, text):
     header("Text -> Hex")
     say(session, explain_text_to_hex(text))
     data = text.encode("utf-8")
-    print(f"\nHex: {data.hex()}")
+    out(f"\nHex: {data.hex()}")
 
     header("Padding")
     say(session, explain_padding(len(data)))
     padded = pad_pkcs7(data)
-    print(f"\nPadded hex: {padded.hex()}")
+    out(f"\nPadded hex: {padded.hex()}")
 
     blocks = split_blocks(padded)
     out_hex = ""
@@ -223,7 +231,7 @@ def forward_chain(session, text):
             state = result
         out_hex += state_to_hex(state)
 
-    print(f"\nFinal hex after MixColumns: {out_hex}")
+    out(f"\nFinal hex after MixColumns: {out_hex}")
     session.last_hex = out_hex
     session.last_text = text
     return out_hex
@@ -245,7 +253,7 @@ def reverse_chain(session, raw):
         padded += bytes.fromhex(state_to_hex(state))
 
     header("State -> Hex")
-    print(f"\nPadded hex: {padded.hex()}")
+    out(f"\nPadded hex: {padded.hex()}")
 
     header("Remove padding and Hex -> Text")
     return decode_plain(session, padded, True)
@@ -262,14 +270,14 @@ def stage_reverse_chain(session, mode):
 def stage_round_trip(session, mode):
     text = get_text(session, mode)
     mixed = forward_chain(session, text)
-    print("\n" + "-" * 60)
-    print("Now reversing the result...")
+    out("\n" + "-" * 60)
+    out("Now reversing the result...")
     recovered = reverse_chain(session, mixed)
-    print("\n" + "-" * 60)
-    print(f"Original text : {text}")
-    print(f"After forward : {mixed}")
-    print(f"Recovered text: {recovered}")
-    print("Round trip OK" if recovered == text else "Round trip FAILED")
+    out("\n" + "-" * 60)
+    out(f"Original text : {text}")
+    out(f"After forward : {mixed}")
+    out(f"Recovered text: {recovered}")
+    out("Round trip OK" if recovered == text else "Round trip FAILED")
 
 
 ACTIONS = {
@@ -316,10 +324,12 @@ def print_menu(session):
  ----------------------------------------------------
  13) Round trip (Text -> ... -> Text)
   E) Step-by-step explanations: {"ON" if session.explain else "OFF"} (type E to toggle)
+  S) Typing speed: {typer.level} (type S to cycle: slow / normal / fast / off)
   0) Exit
  ----------------------------------------------------
  Tip: add p after a number to reuse the previous result (example: 3 p)
       add n (or nothing) to type a new value (example: 3 n)
+ Press Ctrl+C while a result is being typed to show the rest instantly.
  Previous result: {short(session.last_hex)}
  Previous text  : {short(session.last_text)}
 ====================================================="""
@@ -327,7 +337,7 @@ def print_menu(session):
 
 
 def parse_choice(raw):
-    match = re.fullmatch(r"(\d+|e)\s*([a-z]*)", raw.strip().lower())
+    match = re.fullmatch(r"(\d+|e|s)\s*([a-z]*)", raw.strip().lower())
     if not match:
         raise ValueError("Invalid choice. Use a number from the menu, optionally followed by p or n.")
     key, flag = match.groups()
@@ -340,6 +350,7 @@ def parse_choice(raw):
 
 def main():
     session = Session()
+    typer.reset()
     while True:
         print_menu(session)
         try:
@@ -356,9 +367,13 @@ def main():
                 session.explain = not session.explain
                 print(f"\nExplanations are now {'ON' if session.explain else 'OFF'}.")
                 continue
+            if key == "s":
+                print(f"\nTyping speed is now: {typer.cycle()}.")
+                continue
             action = ACTIONS.get(key)
             if action is None:
                 raise ValueError("Invalid choice. Use a number from the menu.")
+            typer.skip = False
             action(session, mode)
         except ValueError as err:
             print(f"\nError: {err}")

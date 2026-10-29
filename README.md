@@ -35,6 +35,7 @@ InvMixColumns -> InvShiftRows -> InvSubBytes -> State -> Hex -> Text
 | Pipeline | `aes/pipeline.py` | The full forward and reverse chains as a library |
 | Explanations | `aes/explain.py` | Text explanations (equations and per-byte steps) for every stage |
 | Menu | `aes/cli.py` | The interactive terminal menu |
+| Typing effect | `aes/typewriter.py` | Prints results character by character, left to right |
 
 ## Project layout
 
@@ -52,11 +53,13 @@ InvMixColumns -> InvShiftRows -> InvSubBytes -> State -> Hex -> Text
 │   ├── state.py
 │   ├── sub_bytes.py
 │   ├── text_hex.py
+│   ├── typewriter.py
 │   └── utils.py
 ├── tests/
 │   ├── test_aes_stages.py
 │   ├── test_cli.py
-│   └── test_no_comments.py
+│   ├── test_no_comments.py
+│   └── test_typewriter.py
 ├── requirements.txt
 ├── .gitignore
 └── README.md
@@ -82,6 +85,7 @@ python main.py
   6) Direct solve (forward chain)   12) Direct solve (reverse chain)
  13) Round trip (Text -> ... -> Text)
   E) Step-by-step explanations: ON (type E to toggle)
+  S) Typing speed: normal (type S to cycle: slow / normal / fast / off)
   0) Exit
 ```
 
@@ -137,6 +141,14 @@ MixColumns multiplies every column by a fixed matrix in GF(2^8) (addition is XOR
 
 SubBytes shows the inverse in GF(2^8) and the affine transformation for each byte, ShiftRows shows each row before and after the rotation, and the padding, Hex/State and text steps are explained too.
 
+### Typing effect
+
+Results are written to the terminal one character at a time, from left to right, like a typewriter. This is most noticeable on the large outputs (options 6, 12 and 13).
+
+- Type `S` in the menu to cycle the speed: `slow`, `normal` (default), `fast`, `off`.
+- Press `Ctrl+C` while a result is being typed to show the rest of it instantly.
+- The effect only runs in a real terminal. When the output is piped or redirected to a file, it is printed instantly.
+
 ### Using it as a library
 
 ```python
@@ -173,6 +185,7 @@ The tests check:
 - that every inverse stage undoes its forward stage on random data
 - full round trips for short, long, empty and non-ASCII text
 - the menu: chaining with `p` and `n`, auto-padding, multi-block input and the explanation toggle
+- the typing effect: per-character delay, speed levels, `Ctrl+C` skip and instant output when piped
 - that the explanation text matches the real results
 - that the source files contain no comments or docstrings
 

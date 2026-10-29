@@ -15,8 +15,8 @@ from aes.mix_columns import inv_mix_columns, mix_columns
 from aes.shift_rows import inv_shift_rows, shift_rows
 from aes.state import hex_to_state, state_to_hex
 from aes.sub_bytes import inv_sub_bytes, sub_bytes
-from aes.text_hex import hex_to_text, text_to_hex
-from aes.utils import bytes_to_spaced_hex, format_state
+from aes.text_hex import hex_to_text, pad_pkcs7, split_blocks, text_to_hex
+from aes.utils import bytes_to_spaced_hex, clean_hex, format_state
 
 MENU = """
 ==================== AES Stages ====================
@@ -33,18 +33,44 @@ MENU = """
   0) Exit
 ====================================================="""
 
+
 def show_state(title, state):
     print(f"\n{title}")
     print(format_state(state))
     print(f"hex: {state_to_hex(state)}")
 
 
-def run_state_stage(title, func):
-    """Ask for a 16-byte hex State, apply func, print the result."""
-    raw = input("Enter State as hex (16 bytes / 32 hex digits): ")
-    state = hex_to_state(raw)
-    show_state("Input State:", state)
-    show_state(f"Output State ({title}):", func(state))
+def read_blocks(raw):
+    """
+    Turn a hex string of ANY length into a list of 16-byte blocks.
+    If the length is not a multiple of 16, PKCS#7 padding is added
+    automatically (and a notice is printed).
+    """
+    data = bytes.fromhex(clean_hex(raw))
+    if len(data) % 16 != 0:
+        data = pad_pkcs7(data)
+        print(f"(auto-padded with PKCS#7 to {len(data)} bytes: {data.hex()})")
+    return split_blocks(data)
+
+
+def run_state_stage(title, func, auto_pad=True):
+    """
+    Ask for hex, apply func to every 16-byte block, print the result.
+    Forward stages auto-pad; inverse stages need exact 16-byte blocks.
+    """
+    raw = input("Enter hex (any length, auto-padded to 16-byte blocks): "
+                if auto_pad else
+                "Enter State as hex (16 bytes / 32 hex digits): ")
+    if auto_pad:
+        blocks = read_blocks(raw)
+    else:
+        blocks = [bytes.fromhex(clean_hex(raw))]
+    for i, block in enumerate(blocks, 1):
+        if len(blocks) > 1:
+            print(f"\n---------- Block {i} ----------")
+        state = hex_to_state(block.hex())
+        show_state("Input State:", state)
+        show_state(f"Output State ({title}):", func(state))
 
 
 def stage_text_to_hex():
@@ -55,8 +81,12 @@ def stage_text_to_hex():
 
 
 def stage_hex_to_state():
-    raw = input("Enter hex (16 bytes / 32 hex digits): ")
-    show_state("State:", hex_to_state(raw))
+    raw = input("Enter hex (any length, auto-padded to 16-byte blocks): ")
+    blocks = read_blocks(raw)
+    for i, block in enumerate(blocks, 1):
+        if len(blocks) > 1:
+            print(f"\n---------- Block {i} ----------")
+        show_state("State:", hex_to_state(block.hex()))
 
 
 def stage_state_to_hex():
@@ -118,9 +148,9 @@ ACTIONS = {
     "4": lambda: run_state_stage("ShiftRows", shift_rows),
     "5": lambda: run_state_stage("MixColumns", mix_columns),
     "6": stage_full_forward,
-    "7": lambda: run_state_stage("InvMixColumns", inv_mix_columns),
-    "8": lambda: run_state_stage("InvShiftRows", inv_shift_rows),
-    "9": lambda: run_state_stage("InvSubBytes", inv_sub_bytes),
+    "7": lambda: run_state_stage("InvMixColumns", inv_mix_columns, auto_pad=False),
+    "8": lambda: run_state_stage("InvShiftRows", inv_shift_rows, auto_pad=False),
+    "9": lambda: run_state_stage("InvSubBytes", inv_sub_bytes, auto_pad=False),
     "10": stage_state_to_hex,
     "11": stage_hex_to_text,
     "12": stage_full_reverse,
